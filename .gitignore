@@ -425,3 +425,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+/gemini.md
+/.idea/.gitignore
+/.idea/DdevIntegration.xml
+/.idea/logistics-tracker.iml
+/.idea/modules.xml
+/.idea/php.xml
+/.idea/vcs.xml

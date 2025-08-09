@@ -1,0 +1,15 @@
+{
+  "name": "logistics-tracker",
+  "private": true,
+  "description": "Real-Time Logistics Tracker ",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "lint:fix": "pnpm -r lint:fix",
+    "frontend": "pnpm --filter frontend",
+    "backend": "pnpm --filter backend"
+  },
+  "keywords": ["react", "typescript", "mapbox", "logistics"],
+  "author": "A.K"
+}

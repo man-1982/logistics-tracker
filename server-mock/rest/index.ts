@@ -22,13 +22,43 @@ const deliveries: Delivery[] = [
 const app = express();
 app.use(express.json());
 
+/**
+ * A whitelist of allowed domains for Cross-Origin Resource Sharing (CORS).
+ * This is loaded from the application's environment configuration.
+ * @example ['http://localhost:5173', 'https://my-production-app.com']
+ */
 const corsOrigins = ENV.CORS_ORIGINS;
+
+/**
+ * Configures and applies the CORS middleware to the Express app.
+ */
 app.use(cors({
+  /**
+   * A function to dynamically determine if a request's origin is allowed.
+   * @param origin - The value of the `Origin` header from the incoming request.
+   *                 This can be `undefined` for same-origin or server-to-server requests.
+   * @param cb - The callback to inform the `cors` middleware whether to allow the request.
+   *             It takes the form `(error, allow)`.
+   */
   origin: (origin, cb) => {
-    if (!origin) return cb(null, true);
-    if (corsOrigins.includes(origin)) return cb(null, true);
-    return cb(new Error("CORS blocked"), false);
+    // Allow requests that don't have an `Origin` header.
+    if (!origin) {
+      return cb(null, true);
+    }
+
+    // Check if the incoming origin is present in our predefined whitelist.
+    if (corsOrigins.includes(origin)) {
+      // If the origin is in the whitelist, allow the request.
+      return cb(null, true);
+    }
+
+    // If the origin is not in the whitelist, block the request by passing an error.
+    return cb(new Error("CORS blocked: This origin is not allowed."), false);
   },
+  /**
+   * Allows the frontend to include credentials (like cookies, authorization headers,
+   * or TLS client certificates) in its cross-origin requests.
+   */
   credentials: true,
 }));
 
@@ -36,6 +66,13 @@ app.use(cors({
 function signToken(sub: string) {
   return jwt.sign({ sub }, ENV.JWT_SECRET, { expiresIn: ENV.ACCESS_TOKEN_TTL_SEC });
 }
+
+/**
+ * Express middleware for JWT-based authentication.
+ *
+ * This middleware checks for a JWT in the `Authorization` header of the request.
+ * The header is expected to be in the format "Bearer
+ **/
 function auth(req: express.Request, res: express.Response, next: express.NextFunction) {
   const h = req.headers.authorization;
   if (!h?.startsWith("Bearer ")) return res.status(401).json({ error: "unauthorized" });

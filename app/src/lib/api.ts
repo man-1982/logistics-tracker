@@ -1,13 +1,17 @@
 import { z } from "zod";
 import { CONFIG } from "./config";
 
-// Define AuthResponse type
+// Define User type
+// TODO move to separate implementation
+export const User = z.object({
+  username: z.string(),
+  role: z.string(),
+});
+export type User = z.infer<typeof User>;
+
 export const AuthResponse = z.object({
   accessToken: z.string().min(1),
-  user: z.object({
-    username: z.string(),
-    role: z.string(),
-  }),
+  user: User,
 });
 export type AuthResponse = z.infer<typeof AuthResponse>;
 

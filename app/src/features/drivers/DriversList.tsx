@@ -1,43 +1,98 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import { useAppSelector } from "../../store";
 import { selectToken } from "../../store/authSlice";
+import type { Driver, MachineStatus } from "../../lib/api";
+
+type DriversListData = { items: Driver[] };
+
+// TODO Impelemt this as a component or global utility
+const STATUS_BADGE: Record<MachineStatus, string> = {
+  delivering: "inline-flex items-center px-2 py-0.5 rounded text-xs bg-green-100 text-green-800",
+  paused:     "inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-800",
+  idle:       "inline-flex items-center px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-800",
+  alarm:      "inline-flex items-center px-2 py-0.5 rounded text-xs bg-red-100 text-red-800",
+};
 
 export default function DriversList() {
-  
-  /**
-   * Authentication token from the Redux store.
-   * `useAppSelector` is a pre-typed version of the `useSelector` hook from `react-redux`.
-   * It extracts the `token` value from the `auth` slice of the state.
-   */
   const token = useAppSelector(selectToken);
+  const qc = useQueryClient();
 
-  /**
-   * A React Query hook to fetch the list of drivers.
-   * The non-null assertion `token!` is safe because the `enabled` option ensures `queryFn` is only called when `token` is truthy.
-   */
   const q = useQuery({
     queryKey: ["drivers"],
-    enabled: !!token,                         // don't fetch until logged in
+    enabled: !!token,
     queryFn: () => api.listDrivers(token!),
   });
 
+  const toggleStatus = useMutation({
+    mutationFn: ({ id, next }: { id: string; next: "paused" | "idle" }) =>
+      next === "paused" ? api.pauseDriver(token!, id) : api.resumeDriver(token!, id),
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey: ["drivers"] });
+      const prev = qc.getQueryData<DriversListData>(["drivers"]);
+      // optimistic flip paused<->idle only; leave delivering/alarm unchanged
+      qc.setQueryData<DriversListData>(["drivers"], (old) => ({
+        items: (old?.items ?? []).map((d) =>
+          d.id === vars.id
+            ? { ...d, status: vars.next }
+            : d
+        ),
+      }));
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["drivers"], ctx.prev);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["drivers"] });
+    },
+  });
+
   if (!token) return null;
-  if (q.isLoading) return <p>Loading drivers…</p>;
+  if (q.isLoading) return <p className="text-lg font-medium">Loading drivers…</p>;
   if (q.isError) return <p role="alert">Error: {(q.error as Error).message}</p>;
 
   const items = q.data?.items ?? [];
 
   return (
-    <div>
+    <div className="space-y-2">
       <h3 className="text-lg font-medium">Drivers ({items.length})</h3>
-      <ul className="list-disc pl-5">
-        {items.map((d) => (
-          <li key={d.id}>
-            {d.name} — <strong>{d.status}</strong> {d.vehicle ? `(${d.vehicle})` : ""}
-          </li>
-        ))}
+      <ul className="divide-y rounded border bg-white">
+        {items.map((d) => {
+          const isPaused = d.status === "paused";
+          const next: "paused" | "idle" = isPaused ? "idle" : "paused";
+          return (
+            <li key={d.id} className="flex items-center justify-between p-3">
+              <div className="flex items-center gap-2">
+                <span className="font-medium">{d.name}</span>
+                <span className={STATUS_BADGE[d.status]}>
+                  {d.status}
+                </span>
+                {d.vehicle && (
+                  <span className="text-sm text-gray-600">({d.vehicle})</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  className="px-3 py-1 rounded bg-gray-900 text-white disabled:opacity-50"
+                  disabled={toggleStatus.isPending || d.status === "delivering" || d.status === "alarm"}
+                  onClick={() => toggleStatus.mutate({ id: d.id, next })}
+                  title={
+                    d.status === "delivering" || d.status === "alarm"
+                      ? "Status controlled by server"
+                      : isPaused ? "Resume (set to idle)" : "Pause (set to paused)"
+                  }
+                >
+                  {isPaused ? "Resume" : "Pause"}
+                </button>
+              </div>
+            </li>
+          );
+        })}
       </ul>
+      <p className="text-xs text-gray-500">
+        Note: Only <b>paused</b> ⇄ <b>idle</b> can be changed from the UI. <b>delivering</b> and <b>alarm</b> are server-controlled.
+      </p>
     </div>
   );
 }

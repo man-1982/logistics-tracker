@@ -9,6 +9,11 @@ export function randomStatus(): MachineStatus {
 
 export function seedStatuses<T extends { id: string; status?: MachineStatus }>(drivers: T[]): T[] {
   for (const d of drivers) d.status = (d.status as MachineStatus) ?? randomStatus();
+  // Ensure at least one driver has "alarm" status
+  if (!drivers.some(d => d.status === "alarm") && drivers.length > 0) {
+    // @ts-ignore
+    drivers[0].status = "alarm";
+  }
   return drivers;
 }
 
@@ -24,6 +29,3 @@ export function seedDeliveryStatuses<T extends { id: string; deliveryStatus?: De
   for (const d of Deliveries) d.deliveryStatus = (d.deliveryStatus as DeliveryStatus) ?? randomDeliveryStatus();
   return Deliveries;
 }
-
-
-

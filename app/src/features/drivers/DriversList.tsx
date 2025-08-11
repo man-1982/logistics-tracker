@@ -1,12 +1,13 @@
+// app/src/features/drivers/DriversList.tsx
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api";
-import { useAppSelector } from "../../store";
+import { useAppDispatch, useAppSelector } from "../../store";
 import { selectToken } from "../../store/authSlice";
+import { setSelectedDriver } from "../../store/uiSlice";
 import type { Driver, MachineStatus } from "../../lib/api";
 
 type DriversListData = { items: Driver[] };
 
-// TODO Impelemt this as a component or global utility
 const STATUS_BADGE: Record<MachineStatus, string> = {
   delivering: "inline-flex items-center px-2 py-0.5 rounded text-xs bg-green-100 text-green-800",
   paused:     "inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-800",
@@ -16,6 +17,7 @@ const STATUS_BADGE: Record<MachineStatus, string> = {
 
 export default function DriversList() {
   const token = useAppSelector(selectToken);
+  const dispatch = useAppDispatch();
   const qc = useQueryClient();
 
   const q = useQuery({
@@ -30,22 +32,13 @@ export default function DriversList() {
     onMutate: async (vars) => {
       await qc.cancelQueries({ queryKey: ["drivers"] });
       const prev = qc.getQueryData<DriversListData>(["drivers"]);
-      // optimistic flip paused<->idle only; leave delivering/alarm unchanged
       qc.setQueryData<DriversListData>(["drivers"], (old) => ({
-        items: (old?.items ?? []).map((d) =>
-          d.id === vars.id
-            ? { ...d, status: vars.next }
-            : d
-        ),
+        items: (old?.items ?? []).map((d) => (d.id === vars.id ? { ...d, status: vars.next } : d)),
       }));
       return { prev };
     },
-    onError: (_e, _v, ctx) => {
-      if (ctx?.prev) qc.setQueryData(["drivers"], ctx.prev);
-    },
-    onSettled: () => {
-      qc.invalidateQueries({ queryKey: ["drivers"] });
-    },
+    onError: (_e, _v, ctx) => { if (ctx?.prev) qc.setQueryData(["drivers"], ctx.prev); },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["drivers"] }),
   });
 
   if (!token) return null;
@@ -64,15 +57,26 @@ export default function DriversList() {
           return (
             <li key={d.id} className="flex items-center justify-between p-3">
               <div className="flex items-center gap-2">
-                <span className="font-medium">{d.name}</span>
-                <span className={STATUS_BADGE[d.status]}>
-                  {d.status}
-                </span>
-                {d.vehicle && (
-                  <span className="text-sm text-gray-600">({d.vehicle})</span>
-                )}
+                {/* Clickable name -> center on map */}
+                <button
+                  className="font-medium underline-offset-2 hover:underline"
+                  onClick={() => dispatch(setSelectedDriver(d.id))}
+                  title="Locate on map"
+                >
+                  {d.name}
+                </button>
+                <span className={STATUS_BADGE[d.status]}>{d.status}</span>
+                {d.vehicle && <span className="text-sm text-gray-600">({d.vehicle})</span>}
               </div>
               <div className="flex items-center gap-2">
+                {/* Explicit Locate button too (optional but handy) */}
+                <button
+                  className="px-2 py-1 rounded border text-sm"
+                  onClick={() => dispatch(setSelectedDriver(d.id))}
+                  title="Locate on map"
+                >
+                  Locate
+                </button>
                 <button
                   className="px-3 py-1 rounded bg-gray-900 text-white disabled:opacity-50"
                   disabled={toggleStatus.isPending || d.status === "delivering" || d.status === "alarm"}
@@ -91,7 +95,7 @@ export default function DriversList() {
         })}
       </ul>
       <p className="text-xs text-gray-500">
-        Note: Only <b>paused</b> ⇄ <b>idle</b> can be changed from the UI. <b>delivering</b> and <b>alarm</b> are server-controlled.
+        Click a driver’s name or <b>Locate</b> to center the map and open their popup.
       </p>
     </div>
   );

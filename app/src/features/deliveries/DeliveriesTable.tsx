@@ -33,7 +33,7 @@ export default function DeliveriesTable() {
   const deliveries = qDeliveries?.data?.items ?? [];
   const drivers = qDrivers?.data?.items ?? [];
 
-  const [status, setStatus] = useState<"" | Delivery["status"]>("");
+  const [status, setStatus] = useState<"" | Delivery["deliveryStatus"]>("");
   const [name, setName] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("eta");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -47,7 +47,7 @@ export default function DeliveriesTable() {
       qc.setQueryData<DeliveriesData>(["deliveries"], (old) => ({
         items: (old?.items ?? []).map((d) =>
           d.id === vars.deliveryId
-            ? { ...d, driverId: vars.driverId, status: d.status === "completed" ? "completed" : "assigned" }
+            ? { ...d, driverId: vars.driverId, status: d.deliveryStatus === "completed" ? "completed" : "assigned" }
             : d
         ),
       }));
@@ -96,7 +96,7 @@ export default function DeliveriesTable() {
 
   const filteredSorted = useMemo(() => {
     let out = deliveries;
-    if (status) out = out.filter((d) => d.status === status);
+    if (status) out = out.filter((d) => d.deliveryStatus === status);
     if (name.trim()) {
       const q = name.trim().toLowerCase();
       out = out.filter(
@@ -107,7 +107,7 @@ export default function DeliveriesTable() {
     out = [...out].sort((a, b) => {
       switch (sortKey) {
         case "status":
-          return a.status.localeCompare(b.status) * dir;
+          return a.deliveryStatus.localeCompare(b.deliveryStatus) * dir;
         case "name":
           return a.title.localeCompare(b.title) * dir;
         case "eta":
@@ -156,8 +156,8 @@ export default function DeliveriesTable() {
         </select>
       </div>
 
-      <div className="overflow-x-auto rounded border bg-white">
-        <table className="w-full text-left">
+      <div className="overflow-scroll w-full rounded border bg-white">
+        <table className="w-full text-left ">
           <thead className="bg-gray-50">
           <tr>
             <th className="p-2">Title</th>
@@ -176,7 +176,7 @@ export default function DeliveriesTable() {
                 <td className="p-2">{d.title}</td>
                 <td className="p-2">{d.customer}</td>
                 <td className="p-2">{d.etaMinutes}</td>
-                <td className="p-2">{d.status}</td>
+                <td className="p-2">{d.deliveryStatus}</td>
                 <td className="p-2">
                   <select
                     className="border rounded px-2 py-1"
@@ -197,7 +197,7 @@ export default function DeliveriesTable() {
                 <td className="p-2">
                   <button
                     className="px-3 py-1 rounded bg-gray-900 text-white disabled:opacity-50"
-                    disabled={complete.isPending || d.status === "completed"}
+                    disabled={complete.isPending || d.deliveryStatus === "completed"}
                     onClick={() => complete.mutate({ deliveryId: d.id })}
                   >
                     Mark Completed

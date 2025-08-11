@@ -78,12 +78,12 @@ export default function RightPanel({ open, onClose }: Props) {
         <div className="h-full overflow-y-auto">
           <div className={tab === "deliveries" ? "" : "hidden"} aria-hidden={tab !== "deliveries"}>
             <div className="p-3">
-              <DeliveriesTable />
+              <DriversList />
             </div>
           </div>
           <div className={tab === "drivers" ? "" : "hidden"} aria-hidden={tab !== "drivers"}>
             <div className="p-3">
-              <DriversList />
+              <DeliveriesTable />
             </div>
           </div>
         </div>

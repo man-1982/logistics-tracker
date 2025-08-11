@@ -18,21 +18,19 @@ const drivers: Driver[] = [
   { id: "d6", name: "John", status: "delivering", vehicle: "Car 22" },
   { id: "d7", name: "Eve", status: "idle", vehicle: "Truck 1" },
   { id: "d8", name: "Frank", status: "delivering", vehicle: "Van 10" },
-  { id: "d9", name: "Grace", status: "paused", vehicle: "Bike 3" },
-  { id: "d10", name: "Heidi", status: "idle", vehicle: "Car 5" },
-  { id: "d11", name: "Ivan", status: "delivering", vehicle: "Truck 2" },
-  { id: "d12", name: "Judy", status: "paused", vehicle: "Van 15" },
-  { id: "d13", name: "Karl", status: "idle", vehicle: "Bike 8" },
-  { id: "d14", name: "Liam", status: "delivering", vehicle: "Car 12" },
-  { id: "d15", name: "Mia", status: "paused", vehicle: "Truck 3" },
-  { id: "d16", name: "Noah", status: "idle", vehicle: "Van 20" }
+  { id: "d9", name: "Grace", status: "paused", vehicle: "Bike 3" }
 ];
 seedStatuses(drivers);
 
 const deliveries: Delivery[] = [
   { id: "o1001", title: "Order #1001", customer: "Store Sadovaya", address: "Sadovaya, 15", etaMinutes: 25, deliveryStatus: "assigned", driverId: "d1" },
   { id: "o1002", title: "Order #1002", customer: "Store Sheriff-1", address: "Main St 5", etaMinutes: 40, deliveryStatus: "completed", driverId: "d2" },
-  { id: "o1003", title: "Order #1003", customer: "Gas Station Green", address: "Green Tir.", etaMinutes: 10, deliveryStatus: "assigned", driverId: null }
+  { id: "o1003", title: "Order #1003", customer: "Gas Station Green", address: "Green Tir.", etaMinutes: 10, deliveryStatus: "assigned", driverId: null },
+  { id: "o1004", title: "Order #1004", customer: "Cafe Latte", address: "Coffee St 10", etaMinutes: 30, deliveryStatus: "assigned", driverId: "d3" },
+  { id: "o1005", title: "Order #1005", customer: "Bookstore Read", address: "Library Ave 7", etaMinutes: 55, deliveryStatus: "assigned", driverId: null },
+  { id: "o1006", title: "Order #1006", customer: "Pharmacy Health", address: "Wellness Rd 2", etaMinutes: 20, deliveryStatus: "completed", driverId: "d4" },
+  { id: "o1007", title: "Order #1007", customer: "Electronics Hub", address: "Tech Plaza 1", etaMinutes: 45, deliveryStatus: "assigned", driverId: "d5" },
+  { id: "o1008", title: "Order #1008", customer: "Fashion Boutique", address: "Style Blvd 12", etaMinutes: 35, deliveryStatus: "assigned", driverId: "d6" }
 ];
 
 seedDeliveryStatuses(deliveries);

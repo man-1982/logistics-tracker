@@ -40,7 +40,5 @@ export const selectToken = (s: { auth: AuthState }) => s.auth.token;
 
 /**
  * Selects the user object from the state.
- * @param s - The root state.
- * @returns The user object, or null if not authenticated.
  */
 export const selectUser = (s: { auth: AuthState }) => s.auth.user;

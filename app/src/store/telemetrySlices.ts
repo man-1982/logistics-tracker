@@ -19,6 +19,16 @@ const telemetrySlice = createSlice({
       const { driverId, pos } = action.payload;
       state[driverId] = pos;
     },
+
+    /**
+     * Adds or updates multiple driver positions in a single action.
+     */
+    upsertPositonsBulk(state, action: PayloadAction<Array<{ driverId: string; pos: DriverPos }>>){
+      for (const { driverId, pos } of action.payload) {
+        state[driverId] = pos;
+      }
+    },
+
     /**
      * Clears all driver position data from the state.
      */
@@ -28,5 +38,5 @@ const telemetrySlice = createSlice({
   },
 });
 
-export const { upsertPosition, resetPositions } = telemetrySlice.actions;
+export const { upsertPosition, resetPositions, upsertPositonsBulk } = telemetrySlice.actions;
 export const telemetryReducer = telemetrySlice.reducer;

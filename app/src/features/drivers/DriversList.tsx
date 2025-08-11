@@ -19,7 +19,7 @@ export default function DriversList() {
   const q = useQuery({
     queryKey: ["drivers"],
     enabled: !!token,                         // don't fetch until logged in
-    queryFn: () => api.listDrivers(token!),   // token! is safe because enabled guards it
+    queryFn: () => api.listDrivers(token!),
   });
 
   if (!token) return null;

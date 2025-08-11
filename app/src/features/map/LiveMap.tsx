@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef } from "react";
 import mapboxgl, { Map, GeoJSONSource } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { useAppSelector } from "../../store";
+import { useAppSelector, useAppDispatch } from "../../store";
 import { CONFIG } from "../../lib/config";
+import { setSelectedDriver, selectSelectedDriverId } from "../../store/uiSlice";
+import { useQueryClient } from "@tanstack/react-query";
 
+//TODO move to lib
 type Feature = {
   type: "Feature";
   id: string;
@@ -14,6 +17,11 @@ type FC = { type: "FeatureCollection"; features: Feature[] };
 
 export default function LiveMap() {
   const positions = useAppSelector((s) => s.telemetry);
+  const selectedId = useAppSelector(selectSelectedDriverId);
+  const dispatch = useAppDispatch();
+  const qc = useQueryClient();
+  // always fresh positions
+  const positionsRef = useRef(positions);
 
   // Define our point on the map
   const data: FC = useMemo(() => {
@@ -42,8 +50,8 @@ export default function LiveMap() {
       container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/streets-v12",
       // TDOO consider using a default position by curent user
-      center: [-123.1207, 49.2827], // Vancouver default
-      zoom: 9,
+      center: [-52.7100, 47.5600,], // st. john's
+      zoom: 2,
     });
     mapRef.current = map;
 
@@ -97,7 +105,20 @@ export default function LiveMap() {
         },
       });
 
-      // Click cluster to zoom
+      // selected halo (filtered by driverId)
+      map.addLayer({
+        id: "selected-point",
+        type: "circle",
+        source: "drivers",
+        filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "driverId"], "__none__"]],
+        paint: {
+          "circle-radius": 11,
+          "circle-color": "rgba(245, 158, 11, 0.35)",
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#b45309"
+        } });
+
+      // Click cluster -> zoom
       map.on("click", "clusters", (e) => {
         // get the clicked cluster feature
         const features = map.queryRenderedFeatures(e.point, { layers: ["clusters"] }) as
@@ -127,17 +148,27 @@ export default function LiveMap() {
         });
       });
 
-
       // Click point → popup
       map.on("click", "unclustered-point", (e) => {
-        const f = e.features?.[0];
-        if (!f) return;
+        const f = e.features?.[0]; if (!f) return;
         const { driverId } = f.properties as any;
-        const [lng, lat] = (f.geometry as any).coordinates;
-        new mapboxgl.Popup({ offset: 8 })
-          .setLngLat([lng, lat])
-          .setHTML(`<strong>Driver:</strong> ${driverId}`)
-          .addTo(map);
+        dispatch(setSelectedDriver(driverId));
+
+        // Lookup driver meta from React Query cache for tooltip
+        const drivers = qc.getQueryData<{ items: Array<{ id: string; name: string; status: string }> }>(["drivers"]);
+        const meta = drivers?.items.find((d) => d.id === driverId);
+        const [lng, lat] = (f.geometry as any).coordinates as [number, number];
+        const pos = positionsRef.current[driverId];
+        // TODO add Auto-update without re-clicking
+        const last = pos?.ts ? new Date(pos.ts).toLocaleTimeString() : "—";
+        const html = `
+          <div class="text-sm leading-tight font-sans pb-5 rounded-2xl">
+            <div><strong class="font-bold">${meta?.name ?? driverId}</strong></div>
+            <div><span class="font-medium">Status:</span> ${meta?.status ?? "unknown"}</div>
+            <div><span class="font-medium">Last update:</span> ${last}</div>
+          </div>
+        `;
+        new mapboxgl.Popup({ offset: 8 }).setLngLat([lng, lat]).setHTML(html).addTo(map);
       });
 
       // Cursor pointer
@@ -155,7 +186,7 @@ export default function LiveMap() {
       map.off("load", mapOnLoad);
       mapRef.current = null;
     };
-  }, []);
+  }, [CONFIG.mapboxToken]);
 
   // update data & fit bounds on first points
   useEffect(() => {
@@ -187,6 +218,18 @@ export default function LiveMap() {
       }
     }
   }, [data]);
+
+  // UPDATE selected filter (no re-init)
+  useEffect(() => {
+    const map = mapRef.current; if (!map) return;
+    const filter = ["all", ["!", ["has", "point_count"]], ["==", ["get", "driverId"], selectedId ?? "__none__"]] as any;
+    if (map.getLayer("selected-point")) {
+      map.setFilter("selected-point", filter);
+    }
+  }, [selectedId]);
+
+  useEffect(() => { positionsRef.current = positions; }, [positions]);
+
 
   return <div ref={mapContainerRef} className="h-[480px] w-full rounded-xl overflow-hidden shadow bg-white" />;
 }

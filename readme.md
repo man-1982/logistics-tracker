@@ -1,6 +1,22 @@
 # Logistics Tracker (Monorepo)
 
-A teaching project for a **high-scale delivery-tracking system** using **Node 20+**, **React 18+**, **TypeScript (strict)**, **Redux Toolkit**, **React Query**, **Tailwind v4**, and **Mapbox GL JS**.
+Here's our logo (hover to see the title text):
+
+
+![alt text](/doc/img-1.png "Map")
+
+![alt text](/doc/img-2.png "Driver list")
+
+![alt text](/doc/img-3.png "Delivery list")
+
+
+
+[logo]: https://github.com/adam-p/markdown-here/raw/master/src/common/images/icon48.png "Logo Title Text 2"
+
+
+A project for a **high-scale delivery-tracking system** using **Node 20+**, **React 18+**, 
+**TypeScript (strict)**, **Redux Toolkit**, **React Query**, **Tailwind v4**, and **Mapbox GL JS**.
+
 This repo is a **pnpm workspace** with two packages:
 
 ```
@@ -46,7 +62,7 @@ VITE_MAPBOX_TOKEN=pk.YOUR_MAPBOX_TOKEN
 PORT=8080
 WS_PORT=8081
 WS_PATH=/rt
-CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,*
 JWT_SECRET=dev-only-not-secure
 ACCESS_TOKEN_TTL_SEC=3600
 GPS_TICK_MS=2000
@@ -120,23 +136,11 @@ WebSocket:
 
 *   **Types first**: validate all server responses with **Zod** at the client boundary.
 *   **State model**:
-    *   RTK → UI/auth and ephemeral client state (e.g., modal visibility, live GPS).
+    *   RTK → UI/auth client state (e.g., modal visibility, live GPS).
     *   React Query → server/cacheable data (drivers, deliveries, history).
 *   **ESM** everywhere. For the server we use `tsx watch` to avoid ESM friction.
 *   **Tailwind v4**: import it once in `src/index.css`, use utilities in components.
 
-## Troubleshooting
-
-*   **Zod “invalid\_union/enum”** on driver status
-    We normalize `status` in `api.ts` (trim/lowercase) before `z.enum(["active","paused"])`.
-*   **Fetch “headers” init error**
-    Client uses `new Headers()` and filters undefined entries.
-*   **TS1484: type-only import**
-    Use `import type { … }` when `verbatimModuleSyntax` is on.
-*   **ESM “Unknown file extension .ts”**
-    Ensure the server uses `tsx watch …` (see `server-mock/package.json`).
-*   **NodeNext extension errors**
-    We use `"moduleResolution": "Bundler"` in the server to avoid `.js` suffix churn.
 
 ## Security & Privacy (dev-mode)
 
@@ -146,21 +150,16 @@ WebSocket:
 
 ## Glossary
 
-*   **ETA** — *Estimated Time of Arrival*. In this prototype it’s a simple integer (minutes). We’ll refine computation from routing later.
+*   **ETA** — *Estimated Time of Arrival*. In this prototype it’s a simple integer (minutes). 
+We’ll refine computation from routing later.
 
 ## Roadmap (Next Steps)
 
-1.  **Mapbox GL JS integration**
-    *   Add `LiveMap` with **clustered GeoJSON** source
-    *   Reconcile live telemetry → map markers
-    *   Fit-to-bounds on first data; tidy styling with Tailwind
-2.  **Delivery actions UI**
-    *   Pause/Resume driver, Reassign, Complete
-    *   Optimistic updates, error toasts, retries/backoff
-3.  **PRD hardening**
-    *   Schemas (Zod/OpenAPI), error contracts, rate limiting, observability (logs/metrics)
-4.  **CI/CD & Docker**
-    *   Dockerfiles for `app` & `server-mock`, GH Actions, preview deploys
+1.  **UI/UX improvements**
+
+
+
+
 
 ## License
 

@@ -3,9 +3,9 @@ import { ENV } from "../types/env";
 import { type WsEnvelope, type GpsPing } from "../types/api";
 
 const driverCoords: Record<string, { lat: number; lng: number }> = {
-  d1: { lat: 40.73061, lng: -73.935242 },// New York, NY
+  d1: { lat: 47.5600, lng: -52.7100},// St. John's, NL
   d2: {lat: 47.5615, lng: -52.7126}, // St. John's, NL
-  d3: { lat: 49.282729, lng: -123.120738 } // Vancouver, BC
+  d3: { lat: 47.5625, lng: -52.7130} // St. John's, NL
 };
 
 const wss = new WebSocketServer({ port: ENV.WS_PORT, path: ENV.WS_PATH });

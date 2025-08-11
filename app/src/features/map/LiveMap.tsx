@@ -82,6 +82,7 @@ export default function LiveMap() {
   const mapRef = useRef<Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const fittedOnceRef = useRef(false);
+  const popupRef = useRef<mapboxgl.Popup | null>(null);
 
   //TODO consider possibility to use useQuery with select option
   //@see https://tanstack.com/query/latest/docs/framework/react/guides/render-optimizations
@@ -175,7 +176,7 @@ export default function LiveMap() {
         filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "driverId"], "__none__"]],
         paint: {
           "circle-radius": 11,
-          "circle-color": "#F59E0B59",
+          "circle-color": "rgb(248,157,6)",
           "circle-stroke-width": 2,
           "circle-stroke-color": "#b45309"
         } });
@@ -319,6 +320,35 @@ export default function LiveMap() {
     if (map.getLayer("selected-point")) {
       map.setFilter("selected-point", filter);
     }
+  }, [selectedId]);
+
+  // When selectedId changes from anywhere (e.g., DriversList), center & popup
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !selectedId) return;
+
+    const pos = positionsRef.current[selectedId];
+    if (!pos) return; // no GPS yet; silently ignore
+
+    const coords: [number, number] = [pos.lng, pos.lat];
+    const targetZoom = Math.max(12, map.getZoom());
+    map.easeTo({ center: coords, zoom: targetZoom, duration: 400 });
+
+    // get driver meta from cache for popup
+    const drivers = qc.getQueryData<{ items: Array<{ id: string; name: string; status: string; vehicle?: string }> }>(["drivers"]);
+    const meta = drivers?.items.find((d) => d.id === selectedId);
+    const last = new Date(pos.ts).toLocaleTimeString();
+
+    const html = `
+    <div style="font: 14px/1.3 system-ui, -apple-system, Segoe UI, Roboto;">
+      <div><strong>${meta?.name ?? selectedId}</strong> ${meta?.vehicle ? `• ${meta.vehicle}` : ""}</div>
+      <div>Status: ${meta?.status ?? "unknown"}</div>
+      <div>Last update: ${last}</div>
+    </div>
+  `;
+
+    if (popupRef.current) popupRef.current.remove();
+    popupRef.current = new mapboxgl.Popup({ offset: 8 }).setLngLat(coords).setHTML(html).addTo(map);
   }, [selectedId]);
 
   useEffect(() => { positionsRef.current = positions; }, [positions]);

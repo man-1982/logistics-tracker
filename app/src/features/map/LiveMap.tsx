@@ -4,13 +4,16 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { CONFIG } from "../../lib/config";
 import { setSelectedDriver, selectSelectedDriverId } from "../../store/uiSlice";
-import { useQueryClient } from "@tanstack/react-query";
+import {useQuery, useQueryClient} from "@tanstack/react-query";
+import {selectToken} from "../../store/authSlice";
+import {api} from "../../lib/api.ts";
 
 //TODO move to lib
 type Feature = {
   type: "Feature";
   id: string;
-  properties: { driverId: string };
+  // TODO enhance with other driver informaition
+  properties: { driverId: string, label: string, status?: string };
   geometry: { type: "Point"; coordinates: [number, number] };
 };
 type FC = { type: "FeatureCollection"; features: Feature[] };
@@ -23,12 +26,36 @@ export default function LiveMap() {
   // always fresh positions
   const positionsRef = useRef(positions);
 
+
+  const token = useAppSelector(selectToken);
+  const qDrivers = useQuery({
+    queryKey: ["drivers"],
+    enabled: !!token,
+    queryFn: () => api.listDrivers(token!),
+  });
+
+  const vehicleById = useMemo(()=> {
+    const items = qDrivers.data?.items ?? [];
+    const map: Record<string, string> = {};
+    for (const d of items) {
+      if(d.vehicle){
+        map[d.id] = d.vehicle;
+        return map;
+      }
+    }
+  }, [qDrivers.data]);
+
+  // console.log("LiveMap", { positions, selectedId });
   // Define our point on the map
   const data: FC = useMemo(() => {
-    const features: Feature[] = Object.entries(positions).map(([driverId, p]) => ({
+    const features: Feature[] = Object.entries(positions).map(([driverId, p]) => (
+      {
       type: "Feature",
-      id: driverId,
-      properties: { driverId },
+      id: driverId, 
+      properties: {
+        driverId: driverId,
+        label: vehicleById?.[driverId] ?? driverId,
+        status: vehicleById?.[driverId] ?? driverId},
       geometry: { type: "Point", coordinates: [p.lng, p.lat] },
     }));
     return { type: "FeatureCollection", features };
@@ -118,6 +145,27 @@ export default function LiveMap() {
           "circle-stroke-color": "#b45309"
         } });
 
+      // labels (driverId for now; we can switch to names later)
+      map.addLayer({
+        id: "point-labels",
+        type: "symbol",
+        source: "drivers",
+        filter: ["!", ["has", "point_count"]],
+        layout: {
+          "text-field": ["get", "label"],      // or a short label property if you add one
+          "text-size": 11,
+          "text-offset": [0, 1.1],
+          "text-anchor": "top",
+          "text-allow-overlap": true
+        },
+        paint: {
+          "text-color": "#111827",                // gray-900
+          "text-halo-color": "#ffffff",
+          "text-halo-width": 1
+        }
+      });
+
+
       // Click cluster -> zoom
       map.on("click", "clusters", (e) => {
         // get the clicked cluster feature
@@ -159,6 +207,13 @@ export default function LiveMap() {
         const meta = drivers?.items.find((d) => d.id === driverId);
         const [lng, lat] = (f.geometry as any).coordinates as [number, number];
         const pos = positionsRef.current[driverId];
+
+        // TODO normalize the type
+        const coords = (f.geometry as any).coordinates as [number, number];
+        const currentZoom = map.getZoom();
+        const targetZoom = currentZoom < 12 ? 12 : currentZoom;
+        map.easeTo({ center: coords, zoom: targetZoom, duration:450});
+
         // TODO add Auto-update without re-clicking
         const last = pos?.ts ? new Date(pos.ts).toLocaleTimeString() : "—";
         const html = `
@@ -194,6 +249,8 @@ export default function LiveMap() {
     if (!map || !map.isStyleLoaded()) return;
     const src = map.getSource("drivers") as GeoJSONSource | undefined;
     if (!src) return;
+
+    // set data to points and map sources
     src.setData(data as any);
 
     if (!fittedOnceRef.current && data.features.length > 0) {

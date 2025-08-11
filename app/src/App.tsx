@@ -3,8 +3,8 @@ import LoginForm from "./features/auth/LoginForm";
 import DriversList from "./features/drivers/DriversList";
 import {useAppDispatch, useAppSelector} from "./store";
 import { selectToken } from "./store/authSlice";
-import { connectWs, type WsEnvelope } from "./lib/ws";
-import {resetPositions, upsertPosition} from "./store/telemetrySlices.ts";
+import { connectWs } from "./lib/ws";
+import {resetPositions, upsertPositonsBulk} from "./store/telemetrySlices";
 import LiveMap from "./features/map/LiveMap.tsx";
 
 export default function App() {
@@ -24,23 +24,37 @@ export default function App() {
       }
       return;
     }
-    const ws = connectWs((msg: WsEnvelope) => {
-      if(msg.type === "gps"){
-        // todo use implemented types. Refactor
-        const p = msg.data as {driverId: string, lat: number, lng: number};
-        //console.log(p);
-        // TODO should be ts into driver data or as is?
-        d(upsertPosition({
-          driverId: p.driverId,
-          pos: {lat: p.lat, lng: p.lng, ts: msg.ts}}
-        ));
+
+    // Batch GPS pings per frame
+    const pending = new Map<string, { lat: number; lng: number; ts: string }>();
+    let rafId: number | null = null;
+    const flush = () => {
+      rafId = null;
+      if (pending.size === 0) return;
+      const batch = Array.from(pending.entries()).map(([driverId, p]) => ({
+        driverId, pos: { lat: p.lat, lng: p.lng, ts: p.ts },
+      }));
+      pending.clear();
+      d(upsertPositonsBulk(batch));
+    };
+
+    const ws = connectWs((msg) => {
+      if (msg.type === "gps") {
+        const p = msg.data as { driverId: string; lat: number; lng: number };
+        pending.set(p.driverId, { ...p, ts: msg.ts });
+        if (rafId == null) rafId = requestAnimationFrame(flush);
       }
       if (msg.type === "gps" || msg.type === "hello") {
         setLog((l) => [JSON.stringify(msg), ...l].slice(0, 5));
       }
     });
+
     wsRef.current = ws;
-    return () => ws.close();
+    return () => {
+      if (rafId != null) cancelAnimationFrame(rafId);
+      flush();
+      ws.close();
+    };
   }, [token, d]);
 
   if (!token) return <LoginForm/>;

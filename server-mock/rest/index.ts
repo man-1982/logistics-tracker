@@ -2,21 +2,41 @@ import express from "express";
 import cors from "cors";
 import jwt from "jsonwebtoken";
 import { ENV } from "../types/env";
-import { Delivery, Driver } from "../types/api";
+import { Delivery, type Driver } from "../types/api";
 import { randomUUID } from "crypto";
+import {seedStatuses, type MachineStatus, seedDeliveryStatuses} from "../types/status";
+
+
 
 // --- In-memory store (seed) ---
 const drivers: Driver[] = [
-  { id: "d1", name: "Alice", status: "active", vehicle: "Van 12" },
-  { id: "d2", name: "Bob", status: "active", vehicle: "Bike 7" },
-  { id: "d3", name: "Chloe", status: "pause", vehicle: "Car 21" }
+  { id: "d1", name: "Alice", status: "idle", vehicle: "Van 12" },
+  { id: "d2", name: "Bob", status: "delivering", vehicle: "Bike 7" },
+  { id: "d3", name: "Chloe", status: "paused", vehicle: "Car 21" },
+  { id: "d4", name: "Andy", status: "paused", vehicle: "Car 24" },
+  { id: "d5", name: "John", status: "delivering", vehicle: "Car 22" },
+  { id: "d6", name: "John", status: "delivering", vehicle: "Car 22" },
+  { id: "d7", name: "Eve", status: "idle", vehicle: "Truck 1" },
+  { id: "d8", name: "Frank", status: "delivering", vehicle: "Van 10" },
+  { id: "d9", name: "Grace", status: "paused", vehicle: "Bike 3" },
+  { id: "d10", name: "Heidi", status: "idle", vehicle: "Car 5" },
+  { id: "d11", name: "Ivan", status: "delivering", vehicle: "Truck 2" },
+  { id: "d12", name: "Judy", status: "paused", vehicle: "Van 15" },
+  { id: "d13", name: "Karl", status: "idle", vehicle: "Bike 8" },
+  { id: "d14", name: "Liam", status: "delivering", vehicle: "Car 12" },
+  { id: "d15", name: "Mia", status: "paused", vehicle: "Truck 3" },
+  { id: "d16", name: "Noah", status: "idle", vehicle: "Van 20" }
 ];
+seedStatuses(drivers);
 
 const deliveries: Delivery[] = [
-  { id: "o1001", title: "Order #1001", customer: "Store Sadovaya", address: "Sadovaya, 15", etaMinutes: 25, status: "assigned", driverId: "d1" },
-  { id: "o1002", title: "Order #1002", customer: "Store Sheriff-1", address: "Main St 5", etaMinutes: 40, status: "completed", driverId: "d2" },
-  { id: "o1003", title: "Order #1003", customer: "Gas Station Green", address: "Green Tir.", etaMinutes: 10, status: "assigned", driverId: null }
+  { id: "o1001", title: "Order #1001", customer: "Store Sadovaya", address: "Sadovaya, 15", etaMinutes: 25, deliveryStatus: "assigned", driverId: "d1" },
+  { id: "o1002", title: "Order #1002", customer: "Store Sheriff-1", address: "Main St 5", etaMinutes: 40, deliveryStatus: "completed", driverId: "d2" },
+  { id: "o1003", title: "Order #1003", customer: "Gas Station Green", address: "Green Tir.", etaMinutes: 10, deliveryStatus: "assigned", driverId: null }
 ];
+
+seedDeliveryStatuses(deliveries);
+
 
 // --- App ---
 const app = express();
@@ -106,28 +126,28 @@ app.post("/api/deliveries/:id/reassign", auth, (req, res) => {
   if (!d) return res.status(404).json({ error: "not_found" });
   if (!drivers.find((dr) => dr.id === driverId)) return res.status(400).json({ error: "invalid_driver" });
   d.driverId = driverId;
-  d.status = d.status === "completed" ? "completed" : "assigned";
+  d.deliveryStatus = d.deliveryStatus === "completed" ? "completed" : "assigned";
   res.json({ ok: true, delivery: d });
 });
 
 app.post("/api/drivers/:id/pause", auth, (req, res) => {
   const dr = drivers.find((x) => x.id === req.params.id);
   if (!dr) return res.status(404).json({ error: "not_found" });
-  dr.status = "pause";
+  dr.status = "paused";
   res.json({ ok: true, driver: dr });
 });
 
 app.post("/api/drivers/:id/resume", auth, (req, res) => {
   const dr = drivers.find((x) => x.id === req.params.id);
   if (!dr) return res.status(404).json({ error: "not_found" });
-  dr.status = "active";
+  dr.status = "delivering";
   res.json({ ok: true, driver: dr });
 });
 
 app.post("/api/deliveries/:id/complete", auth, (req, res) => {
   const d = deliveries.find((x) => x.id === req.params.id);
   if (!d) return res.status(404).json({ error: "not_found" });
-  d.status = "completed";
+  d.deliveryStatus = "completed";
   d.etaMinutes = 0;
   res.json({ ok: true, delivery: d });
 });
@@ -142,7 +162,7 @@ app.post("/api/deliveries", auth, (req, res) => {
     customer: body.customer ?? "Unknown",
     address: body.address ?? "Unknown",
     etaMinutes: body.etaMinutes ?? 30,
-    status: "assigned",
+    deliveryStatus: "assigned",
     driverId: body.driverId ?? null,
   };
   deliveries.unshift(delivery);

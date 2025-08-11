@@ -1,16 +1,15 @@
+import type {DeliveryStatus, MachineStatus} from "./status";
 export type DriverId = string;
 export type DeliveryId = string;
 
 export type Driver = {
   id: DriverId,
   name: string,
-  // TODO add more statuses and change type
-  status: "active" | "pause",
+  status: MachineStatus,
   // TODO vehicle implement separate type
   vehicle?: string
 };
 
-export type DeliveryStatus = "assigned" | "in_progress" | "completed" | "cancelled";
 
 export type Delivery = {
   id: DeliveryId,
@@ -18,7 +17,7 @@ export type Delivery = {
   customer: string,
   address: string,
   etaMinutes: number,
-  status: DeliveryStatus,
+  deliveryStatus: DeliveryStatus,
   driverId?: DriverId | null,
 }
 

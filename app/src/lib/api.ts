@@ -16,16 +16,15 @@ export const AuthResponse = z.object({
 export type AuthResponse = z.infer<typeof AuthResponse>;
 
 // Define a Driver type and DriversList
-// Normalize driver status (handles "Paused", "paused ", etc.)
-const DriverStatus = z.preprocess(
-  (v) => (typeof v === "string" ? v.trim().toLowerCase() : v),
-  z.enum(["active", "pause"])
-);
+
+//@see server-mock/types/api.ts
+export const MachineStatus = z.enum(["delivering",  "paused",  "idle", "alarm"]);
+export type MachineStatus = z.infer<typeof MachineStatus>;
 
 export const Driver = z.object({
   id: z.string(),
   name: z.string(),
-  status: DriverStatus,
+  status: MachineStatus,
   vehicle: z.string().optional(),
 });
 export type Driver = z.infer<typeof Driver>;
@@ -34,17 +33,18 @@ const DriversList = z.object({ items: z.array(Driver) });
 // Define Delivery type and DeliveriesList
 const DeliveryStatus = z.enum([
   "assigned",
-  "in_transit",
+  "in_progress",
   "completed",
   "cancelled"
 ]);
+export type DeliveryStatus = z.infer<typeof DeliveryStatus>;
 export const Delivery = z.object({
   id: z.string(),
   title: z.string(),
   customer: z.string(),
   address: z.string(),
   etaMinutes: z.number(),
-  status: DeliveryStatus,
+  deliveryStatus: DeliveryStatus,
   driverId: z.string().nullable().optional(),
 });
 export type Delivery = z.infer<typeof Delivery>;

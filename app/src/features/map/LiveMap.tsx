@@ -6,7 +6,7 @@ import { CONFIG } from "../../lib/config";
 import { setSelectedDriver, selectSelectedDriverId } from "../../store/uiSlice";
 import {useQuery, useQueryClient} from "@tanstack/react-query";
 import {selectToken} from "../../store/authSlice";
-import {api} from "../../lib/api.ts";
+import {api, type MachineStatus} from "../../lib/api";
 
 //TODO move to lib
 type Feature = {
@@ -19,6 +19,13 @@ type Feature = {
 type FC = { type: "FeatureCollection"; features: Feature[] };
 
 export default function LiveMap() {
+  const DRIVER_STATUS_LABEL: Record<MachineStatus, string> = {
+    delivering: "Delivering",
+    paused: "Paused",
+    idle: "Idle",
+    alarm: "Alarm",
+  };
+
   const positions = useAppSelector((s) => s.telemetry);
   const selectedId = useAppSelector(selectSelectedDriverId);
   const dispatch = useAppDispatch();
@@ -45,6 +52,17 @@ export default function LiveMap() {
     }
   }, [qDrivers.data]);
 
+  const statusById = useMemo(() => {
+    const items = qDrivers.data?.items ?? [];
+    const map: Record<string, string> = {};
+    for (const d of items) {
+      if(d.status){
+        map[d.id] = d.status;
+      }
+    }
+    return map;
+  }, [qDrivers.data]);
+
   // console.log("LiveMap", { positions, selectedId });
   // Define our point on the map
   const data: FC = useMemo(() => {
@@ -55,7 +73,7 @@ export default function LiveMap() {
       properties: {
         driverId: driverId,
         label: vehicleById?.[driverId] ?? driverId,
-        status: vehicleById?.[driverId] ?? driverId},
+        status: statusById?.[driverId] ?? "idle"},
       geometry: { type: "Point", coordinates: [p.lng, p.lat] },
     }));
     return { type: "FeatureCollection", features };
@@ -92,6 +110,7 @@ export default function LiveMap() {
         clusterRadius: 50,
       });
 
+
       // Cluster circles
       map.addLayer({
         id: "clusters",
@@ -100,7 +119,7 @@ export default function LiveMap() {
         filter: ["has", "point_count"],
         paint: {
           "circle-radius": 18,
-          "circle-color": "#2563eb",
+          "circle-color": "#25b0eb",
           "circle-opacity": 0.85,
         },
       });
@@ -118,6 +137,7 @@ export default function LiveMap() {
         paint: { "text-color": "#ffffff" },
       });
 
+      // TODO need generate const for colors and labels and ...
       // Individual points
       map.addLayer({
         id: "unclustered-point",
@@ -126,9 +146,24 @@ export default function LiveMap() {
         filter: ["!", ["has", "point_count"]],
         paint: {
           "circle-radius": 7,
-          "circle-color": "#10b981",
+          "circle-color": [
+            "match",
+            ["get", "status"],
+            "delivering", "#16a34a",
+            "paused", "#ecd23a",
+            "idle", "#6b7280",
+            "alarm", "#ef4444",
+            "#3b82f6"
+          ],
           "circle-stroke-width": 1.5,
-          "circle-stroke-color": "#064e3b",
+          "circle-stroke-color": [
+            "match", ["get", "status"],
+            "delivering", "#065f46",
+            "paused",     "#ec6e08",
+            "idle",       "#626265",
+            "alarm",      "#991b1b",
+            "#1e40af"
+          ],
         },
       });
 
@@ -140,7 +175,7 @@ export default function LiveMap() {
         filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "driverId"], "__none__"]],
         paint: {
           "circle-radius": 11,
-          "circle-color": "rgba(245, 158, 11, 0.35)",
+          "circle-color": "#F59E0B59",
           "circle-stroke-width": 2,
           "circle-stroke-color": "#b45309"
         } });
@@ -159,7 +194,7 @@ export default function LiveMap() {
           "text-allow-overlap": true
         },
         paint: {
-          "text-color": "#111827",                // gray-900
+          "text-color": "#111827",
           "text-halo-color": "#ffffff",
           "text-halo-width": 1
         }
@@ -213,13 +248,14 @@ export default function LiveMap() {
         const currentZoom = map.getZoom();
         const targetZoom = currentZoom < 12 ? 12 : currentZoom;
         map.easeTo({ center: coords, zoom: targetZoom, duration:450});
+        const driverStatus = meta?.status ? DRIVER_STATUS_LABEL[meta.status as keyof typeof DRIVER_STATUS_LABEL] : "-";
 
         // TODO add Auto-update without re-clicking
         const last = pos?.ts ? new Date(pos.ts).toLocaleTimeString() : "—";
         const html = `
           <div class="text-sm leading-tight font-sans pb-5 rounded-2xl">
             <div><strong class="font-bold">${meta?.name ?? driverId}</strong></div>
-            <div><span class="font-medium">Status:</span> ${meta?.status ?? "unknown"}</div>
+            <div><span class="font-medium">Status:</span> ${driverStatus}</div>
             <div><span class="font-medium">Last update:</span> ${last}</div>
           </div>
         `;
@@ -241,7 +277,7 @@ export default function LiveMap() {
       map.off("load", mapOnLoad);
       mapRef.current = null;
     };
-  }, [CONFIG.mapboxToken]);
+  }, [CONFIG.mapboxToken, ]);
 
   // update data & fit bounds on first points
   useEffect(() => {
@@ -288,5 +324,5 @@ export default function LiveMap() {
   useEffect(() => { positionsRef.current = positions; }, [positions]);
 
 
-  return <div ref={mapContainerRef} className="h-[480px] w-full rounded-xl overflow-hidden shadow bg-white" />;
+  return <div ref={mapContainerRef} className="h-[560px] w-full rounded-xl overflow-hidden shadow bg-white" />;
 }

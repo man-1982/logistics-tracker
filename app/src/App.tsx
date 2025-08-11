@@ -6,6 +6,7 @@ import { selectToken } from "./store/authSlice";
 import { connectWs } from "./lib/ws";
 import {resetPositions, upsertPositonsBulk} from "./store/telemetrySlices";
 import LiveMap from "./features/map/LiveMap.tsx";
+import DeliveriesTable from "./features/deliveries/DeliveriesTable.tsx";
 
 export default function App() {
   const token = useAppSelector(selectToken);
@@ -62,11 +63,15 @@ export default function App() {
   return (
     <div className="grid gap-4 p-4">
       <h2 className="text-xl font-semibold">Dashboard</h2>
+      <DeliveriesTable/>
       <DriversList/>
       <LiveMap/>
-      <section>
-        <h3 className="text-lg font-medium">WS last messages</h3>
-        <pre className="max-h-52 overflow-auto bg-gray-100 p-2 rounded">{log.join("\n")}</pre>
+
+      <section className={"p-4 rounded-xl bg-white shadow"}>
+        <details>
+          <summary className="text-lg font-medium cursor-pointer text-cyan-800">WS last messages (logs):</summary>
+          <pre className="max-h-52 overflow-auto bg-gray-100 p-2 rounded">{log.join("\n")}</pre>
+        </details>
       </section>
     </div>
   );

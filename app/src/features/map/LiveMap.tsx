@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useRef, useState} from "react";
-import mapboxgl, {Map, GeoJSONSource, type LngLatLike} from "mapbox-gl";
+import mapboxgl, {Map, GeoJSONSource, type LngLatLike, type FeatureSelector, type GeoJSONFeature, type TargetFeature} from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { CONFIG } from "../../lib/config";
@@ -9,10 +9,11 @@ import { selectToken } from "../../store/authSlice";
 import { api, type MachineStatus } from "../../lib/api";
 
 //TODO move to lib
+type FeatureProperties = { driverId: string, label: string, status?: string };
 type Feature = {
   type: "Feature";
   id: string;
-  properties: { driverId: string, label: string, status?: string };
+  properties: FeatureProperties;
   geometry: { type: "Point"; coordinates: [number, number] };
 };
 type FC = { type: "FeatureCollection"; features: Feature[] };
@@ -267,7 +268,7 @@ export default function LiveMap() {
           const f = e.feature;
           if (!f) return;
 
-          const { driverId } = f.properties as object;
+          const { driverId } = f.properties as FeatureProperties;
           const coordinates = (f.geometry as any).coordinates as [number, number];
 
           dispatch(setSelectedDriver(driverId));
